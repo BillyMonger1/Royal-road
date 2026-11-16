@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; media-src 'self' blob:; script-src 'self'; style-src 'self'; img-src 'self' data: royal:; connect-src https: royal: data:; font-src 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Royal Road</title>
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="bar">
+    <div class="brand"><span class="brand-dot"></span>The Royal Road</div>
+    <div class="bar-drag"></div>
+    <button class="pill transcribe" id="transcribe" type="button"><span class="rec-dot" aria-hidden="true"></span>Transcribe</button>
+    <button class="pill status" id="status" type="button" title="Check the cloud now">
+      <span class="lamp" id="lamp" data-state="off"></span><span id="statusText">Starting</span>
+    </button>
+    <button class="round" id="openSetup" type="button" aria-label="Setup" title="Setup">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>
+    </button>
+  </header>
+
+  <main class="face">
+    <section class="housing" aria-label="Dream graph">
+      <div class="crt" id="crt">
+        <canvas class="trace"></canvas>
+        <canvas class="graticule"></canvas>
+        <div class="glass"></div>
+        <p class="nosignal">No signal yet. Record a dream on your phone, or add one here.</p>
+      </div>
+
+      <div class="controls">
+        <div class="channels" id="channels" role="group" aria-label="Show or hide kinds of node"></div>
+        <div class="knobs">
+          <div class="knob-unit"><div class="knob" id="knobScale" tabindex="0" role="slider" aria-label="Scale"><span class="knob-cap"></span></div><span class="knob-label">Scale</span></div>
+          <div class="knob-unit"><div class="knob" id="knobIntensity" tabindex="0" role="slider" aria-label="Intensity"><span class="knob-cap"></span></div><span class="knob-label">Intensity</span></div>
+          <div class="knob-unit"><div class="knob" id="knobDepth" tabindex="0" role="slider" aria-label="Depth"><span class="knob-cap"></span></div><span class="knob-label">Depth</span></div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="deck" aria-label="Journal">
+      <div class="segment" role="tablist">
+        <button class="tab" id="tabJournal" type="button" role="tab" aria-selected="true">Journal</button>
+        <button class="tab" id="tabChat" type="button" role="tab" aria-selected="false">Chat</button>
+      </div>
+      <div class="paper" id="paper" tabindex="-1"></div>
+      <button class="key wide" id="addDream" type="button"><span class="plus" aria-hidden="true">+</span>Add a dream</button>
+    </aside>
+  </main>
+</div>
+
+<dialog id="setup" class="setup" aria-labelledby="setupTitle">
+  <form method="dialog" class="setup-head">
+    <h2 id="setupTitle">Setup</h2>
+    <button class="key" type="submit">Done</button>
+  </form>
+  <div class="setup-body">
+
+    <section>
+      <h3><span class="step">1</span>Cloud relay</h3>
+      <p>Dreams wait here, encrypted, between your phone and this computer. Create a free Supabase project, run <code>cloud/setup.sql</code> in its SQL Editor, then paste the two values from Project Settings › API.</p>
+      <label>Project URL<input id="cloudUrl" type="url" placeholder="https://abcdefgh.supabase.co" spellcheck="false" autocomplete="off"></label>
+      <label>Publishable (anon) key<input id="cloudKey" type="password" placeholder="Starts with eyJ or sb_publishable_" spellcheck="false" autocomplete="off"></label>
+      <div class="row"><button class="key" id="testCloud" type="button">Test the relay</button><span class="result" id="cloudResult" role="status"></span></div>
+    </section>
+
+    <section>
+      <h3><span class="step">2</span>Phone</h3>
+      <p>Install the Royal Road app on your Android phone, then scan the code below from its Pair screen. Only fill in the address if you put the web version online instead.</p>
+      <label>Web version address (optional)<input id="phoneUrl" type="url" placeholder="https://your-name.netlify.app" spellcheck="false" autocomplete="off"></label>
+      <div class="pair" id="pair" hidden>
+        <div class="qr" id="qr" role="img" aria-label="Pairing code"></div>
+        <div class="pair-side">
+          <p id="pairHint"></p>
+          <button class="key" id="copyPair" type="button">Copy pairing link</button>
+          <button class="key quiet" id="newPair" type="button">Make a new code</button>
+          <span class="result" id="pairResult" role="status"></span>
+        </div>
+      </div>
+      <p class="hint" id="pairWait">The pairing code appears once the cloud relay is filled in.</p>
+    </section>
+
+    <section>
+      <h3><span class="step">3</span>AI</h3>
+      <p>The AI names each dream's threads and answers in Chat. Without one, the built-in analyzer still files and links every dream.</p>
+      <label>Provider
+        <select id="aiProvider">
+          <option value="none">None (built-in analyzer)</option>
+          <option value="anthropic">Claude (Anthropic)</option>
+          <option value="openai">OpenAI</option>
+          <option value="ollama">Ollama on this computer</option>
+          <option value="custom">Other OpenAI-compatible service</option>
+        </select>
+      </label>
+      <label id="aiBaseRow">Address<input id="aiBase" type="url" spellcheck="false" autocomplete="off"></label>
+      <label id="aiKeyRow">API key<input id="aiKey" type="password" spellcheck="false" autocomplete="off"></label>
+      <label id="aiModelRow">Model name<input id="aiModel" type="text" spellcheck="false" autocomplete="off"></label>
+      <div class="row" id="aiTestRow"><button class="key" id="testAi" type="button">Test the AI</button><span class="result" id="aiResult" role="status"></span></div>
+    </section>
+
+    <section id="sttSection">
+      <h3><span class="step">4</span>Transcription</h3>
+      <p>Turns what you say into the dream's words when you press Transcribe. Groq is the cheapest and fastest; OpenAI can reuse the key above.</p>
+      <label>Transcription service
+        <select id="sttProvider">
+          <option value="none">None (type dreams instead)</option>
+          <option value="groq">Groq</option>
+          <option value="openai">OpenAI</option>
+          <option value="custom">Other OpenAI-compatible service</option>
+        </select>
+      </label>
+      <label id="sttBaseRow">Address<input id="sttBase" type="url" placeholder="https://example.com/v1" spellcheck="false" autocomplete="off"></label>
+      <label id="sttKeyRow">API key<input id="sttKey" type="password" spellcheck="false" autocomplete="off"></label>
+      <label id="sttModelRow">Model name<input id="sttModel" type="text" spellcheck="false" autocomplete="off"></label>
+      <div class="row" id="sttTestRow"><button class="key" id="testStt" type="button">Test transcription</button><span class="result" id="sttResult" role="status"></span></div>
+    </section>
+
+    <section>
+      <h3><span class="step">5</span>Pictures</h3>
+      <p>Creates a picture for a dream when you ask. Uploading your own pictures works without this.</p>
+      <label>Picture service
+        <select id="imgProvider">
+          <option value="none">None</option>
+          <option value="openai">OpenAI</option>
+          <option value="custom">Other OpenAI-compatible service</option>
+        </select>
+      </label>
+      <label id="imgBaseRow">Address<input id="imgBase" type="url" placeholder="https://example.com/v1" spellcheck="false" autocomplete="off"></label>
+      <label id="imgKeyRow">API key<input id="imgKey" type="password" spellcheck="false" autocomplete="off" placeholder="Leave empty to use the OpenAI key above"></label>
+      <label id="imgModelRow">Model name<input id="imgModel" type="text" spellcheck="false" autocomplete="off" placeholder="gpt-image-2"></label>
+    </section>
+
+    <section>
+      <h3>This computer</h3>
+      <label class="switch" id="autostartRow"><input id="autostart" type="checkbox"><span class="switch-track"></span>Start when Windows starts</label>
+      <p class="hint" id="autostartHint" hidden>Starting with the computer works in the installed app, not the portable one.</p>
+      <div class="row">
+        <button class="key" id="exportBackup" type="button">Save a backup</button>
+        <button class="key quiet" id="importBackup" type="button">Restore a backup</button>
+        <button class="key quiet" id="exportObsidian" type="button">Export to Obsidian</button>
+        <span class="result" id="backupResult" role="status"></span>
+      </div>
+    </section>
+  </div>
+</dialog>
+
+<script src="engine.js"></script>
+<script src="relay.js"></script>
+<script src="qr.js"></script>
+<script src="dictation.js"></script>
+<script src="scope.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
